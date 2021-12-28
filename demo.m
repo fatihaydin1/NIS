@@ -8,9 +8,9 @@ fns = fieldnames(dataset);
 [ X, Y ] = divideTable( dataset.(fns{1}) );
 
 alpha = 0.3;
-[ACC, R, T] = demo1(X, Y, 'KNN', alpha);
+ACC = demo1(X, Y, 'KNN', alpha);
 
-[ idx, newX, newY ] = demo2( X, Y, alpha );
+[ idx, newX, newY, R, T ] = demo2( X, Y, alpha );
 
 clear dataset;
 clear fns;
@@ -18,12 +18,10 @@ clear fns;
 
 
 %%
-function [ACC, R, T] = demo1( X, Y, classifier, alpha )
+function [ ACC ] = demo1( X, Y, classifier, alpha )
 
     predictions = repmat(Y, 1, 2);
     indices = crossvalind('Kfold', Y, 10);
-    R = zeros(10,1);
-    T = zeros(10,1);
         
     for i = 1:10
         fprintf('%d',i);
@@ -34,9 +32,7 @@ function [ACC, R, T] = demo1( X, Y, classifier, alpha )
         trainX = X(train,:);
         testX = X(test,:);
         
-        tic;
         idx = NIS(trainX, alpha);
-        T(i) = toc;
         newTrainX = trainX(idx, :);
         newTrainY = trainY(idx);
 
@@ -56,22 +52,23 @@ function [ACC, R, T] = demo1( X, Y, classifier, alpha )
                 Mdl = fitcecoc(newTrainX, newTrainY, 'Learners', t);
                 predictions(test, 2) = predict(Mdl, testX);
         end
-        R(i) = size(newTrainX,1);
         predictions(test, 2) = predict(Mdl, testX);
     end
     ACC = sum(predictions(:,1) == predictions(:,2))*100/length(Y);
-    R = 100 - (mean(R)*100/length(Y));
-    T = sum(T);
 end
 
 
 
 %%
-function [ idx, newX, newY ] = demo2( X, Y, alpha )
+function [ idx, newX, newY, R, T ] = demo2( X, Y, alpha )
 
+    m = numel(Y);
+    tic;
     idx = NIS(X, alpha);
+    T = toc;
     newX = X(idx, :);
     newY = Y(idx);
+    R = (m-numel(idx))*100/m;
 end
 
 
