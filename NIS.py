@@ -1,4 +1,8 @@
+# CODING HAS BEEN CARRIED OUT ON GOOGLE COLAB
+
 import numpy as np
+import pandas as pd
+from time import time
     
 # Nimble Instance Selection (NIS)
 def NIS(X, alpha=1.0):
@@ -25,12 +29,22 @@ def NIS(X, alpha=1.0):
     transformedX = np.nan_to_num(transformedX);
     
     # Find the indices of the unique rows in the transformed data set (transformedX)
-    transformedX, indices = np.unique(transformedX, return_index=True, axis=0);
-    
+    _, indices = np.unique(transformedX, return_index=True, axis=0);
+
     return indices;
 
-# main method
-X = np.around(np.random.rand(1000, 10), 2);
-indices = NIS(X, 0.2);
-print('The number of unique data: ', indices.size, sep='\n', end='\n\n');
 
+# MAIN METHOD
+# Load dataset
+dataset = pd.read_csv('/content/drive/MyDrive/Colab Notebooks/datasets/cardiotocography.csv');
+d = dataset.shape[1] - 1;
+X = dataset.iloc[:, 0:d].to_numpy();
+
+t0 = time()
+indices = NIS(X, 1);
+elapsed_time = time() - t0;
+
+print("Elapsed time:\t", elapsed_time);
+print("The number of data:", X.shape[0], sep='\t');
+print('The number of unique data:', indices.size, sep='\t', end='\n\n');
+print("Instances have been reduced by {r:8.2f}%".format(r=(X.shape[0]-indices.size)*100/X.shape[0]));
