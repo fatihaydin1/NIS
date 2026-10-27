@@ -9,7 +9,7 @@ Unsupervised instance selection via conjectural hyperrectangles: https://doi.org
 NIS is also available in [scikit-reduce](https://github.com/fatihaydin1/scikit-reduce), with a `fit_resample` interface that works in imbalanced-learn pipelines:
 
 ```bash
-pip install "scikit-reduce[imblearn]"
+pip install scikit-reduce
 ```
 
 ```python
