@@ -1,50 +1,64 @@
-# CODING HAS BEEN CARRIED OUT ON GOOGLE COLAB
+"""Nimble Instance Selection (NIS): a NumPy port of NIS.m.
+
+F. Aydin, "Unsupervised instance selection via conjectural hyperrectangles,"
+Neural Computing and Applications, 35, 5335-5349, 2023.
+https://doi.org/10.1007/s00521-022-07974-z
+
+For a scikit-learn compatible version, see
+https://github.com/fatihaydin1/scikit-reduce
+"""
+
+import warnings
 
 import numpy as np
-import pandas as pd
-from time import time
-    
-# Nimble Instance Selection (NIS)
+
+
 def NIS(X, alpha=1.0):
-    # Find the minimum of each column of the data set (X)
-    u = X.min(axis=0);
+    """Return the indices (0-based) of the instances that NIS keeps.
 
-    # Subtract the data set (X) from the vector containing the minimum elements (u)
-    transformedX = X - u;
+    The indices are in the same order as those returned by NIS.m.
+    """
+    X = np.asarray(X, dtype=float)
 
-    # Multiply the transformed data set (transformedX) by the scaling parameter (alpha)
-    transformedX = alpha * transformedX;
-    
-    # Find the standard deviation of each column of the data set (X)
-    v = X.std(1);
-    
-    # Divide the transformed data set (transformedX) by the standard deviation of each column of the data set (X) as element-wise
-    np.seterr(divide='ignore', invalid='ignore');
-    transformedX = transformedX / v[:, None];
-    
-    # Round the each element of the transformed data set to the nearest whole number
-    transformedX = np.around(transformedX, 0);
-    
-    # Replace the NaN values with zero
-    transformedX = np.nan_to_num(transformedX);
-    
-    # Find the indices of the unique rows in the transformed data set (transformedX)
-    _, indices = np.unique(transformedX, return_index=True, axis=0);
+    with warnings.catch_warnings(), np.errstate(divide="ignore", invalid="ignore"):
+        warnings.simplefilter("ignore", RuntimeWarning)
+        # Column minima and sample standard deviations, ignoring NaN
+        # (MATLAB: min(X,[],1,'omitnan') and std(X,'omitnan')).
+        u = np.nanmin(X, axis=0)
+        v = np.nanstd(X, axis=0, ddof=1)
+        transformedX = alpha * ((X - u) / v)
 
-    return indices;
+    # Replace NaN values (missing data, zero-variance columns) with zero.
+    transformedX[np.isnan(transformedX)] = 0
+
+    # Round to the nearest integer with ties away from zero, like MATLAB's
+    # round (np.round rounds ties to the nearest even number).
+    a = np.abs(transformedX)
+    r = np.floor(a)
+    r += (a - r) >= 0.5
+    transformedX = np.copysign(r, transformedX)
+
+    # Keep the first instance of each unique row (MATLAB: unique(..., 'rows', 'first')).
+    _, indices = np.unique(transformedX, axis=0, return_index=True)
+    return indices
 
 
-# MAIN METHOD
-# Load dataset
-dataset = pd.read_csv('/content/drive/MyDrive/Colab Notebooks/datasets/cardiotocography.csv');
-d = dataset.shape[1] - 1;
-X = dataset.iloc[:, 0:d].to_numpy();
+if __name__ == "__main__":
+    import sys
+    from time import time
 
-t0 = time()
-indices = NIS(X, 1);
-elapsed_time = time() - t0;
+    import pandas as pd
 
-print("Elapsed time:\t", elapsed_time);
-print("The number of data:", X.shape[0], sep='\t');
-print('The number of unique data:', indices.size, sep='\t', end='\n\n');
-print("Instances have been reduced by {r:8.2f}%".format(r=(X.shape[0]-indices.size)*100/X.shape[0]));
+    # Usage: python NIS.py dataset.csv [alpha]   (the last column is the class)
+    dataset = pd.read_csv(sys.argv[1])
+    alpha = float(sys.argv[2]) if len(sys.argv) > 2 else 1.0
+    X = dataset.iloc[:, :-1].to_numpy()
+
+    t0 = time()
+    indices = NIS(X, alpha)
+    elapsed_time = time() - t0
+
+    print("Elapsed time:", elapsed_time, sep="\t")
+    print("The number of data:", X.shape[0], sep="\t")
+    print("The number of unique data:", indices.size, sep="\t", end="\n\n")
+    print("Instances have been reduced by {r:8.2f}%".format(r=(X.shape[0] - indices.size) * 100 / X.shape[0]))
